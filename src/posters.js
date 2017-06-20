@@ -16,6 +16,20 @@ const posters = [
     labelSmallHeader: 'Catalonia',
     labelText: '(assigned later)',
   },
+  {
+    swLat: 41.20008064,
+    swLng: 1.985047735,
+    neLat: 41.56438133,
+    neLng: 2.349196506,
+    mapStyle: 'bw',
+    posterStyle: 'bw',
+    size: '30x40cm',
+    orientation: 'portrait',
+    labelsEnabled: true,
+    labelHeader: 'Barcelona',
+    labelSmallHeader: 'Catalonia',
+    labelText: '(assigned later)',
+  },
 ];
 
 function getCenter(poster) {
@@ -42,5 +56,5 @@ function coordToPrettyText(coord) {
 }
 
 module.exports = _.map(posters, poster => _.extend({}, poster, {
-    labelText: coordToPrettyText(getCenter(poster)),
+  labelText: coordToPrettyText(getCenter(poster)),
 }));

@@ -20,6 +20,9 @@ const config = {
   AWS_S3_BUCKET_NAME: process.env.AWS_S3_BUCKET_NAME,
   AWS_REGION: process.env.AWS_REGION || 'eu-west-1',
   AWS_DEBUG: process.env.AWS_DEBUG === 'true',
+  RESIZE_TO_HEIGHT: process.env.RESIZE_TO_HEIGHT
+    ? Number(process.env.RESIZE_TO_HEIGHT)
+    : 2000,
 };
 
 module.exports = config;
