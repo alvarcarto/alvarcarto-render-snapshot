@@ -7,11 +7,26 @@ const defaultOpts = {};
 
 function getUserOpts() {
   const userOpts = yargs
-    .command('snapshot', 'take a snapshot', () => {}, () => {
-      core.snapshot();
+    .command('snapshot', 'take a snapshot', () => {}, (argv) => {
+      core.snapshot(argv);
     })
-    .command('compare', 'compare current status to snapshot', () => {}, () => {
-      core.compare();
+    .command('compare', 'compare current status to snapshot', () => {}, (argv) => {
+      core.compare(argv);
+    })
+    .option('originals', {
+      describe: 'If true, original images are saved when snapshotting',
+      default: false,
+      type: 'boolean',
+    })
+    .option('target', {
+      describe: 'Target where snapshots are saved. Options: s3, local',
+      default: 's3',
+      type: 'string',
+    })
+    .option('only', {
+      describe: 'Process only the posters which match filters',
+      default: '**',
+      type: 'string',
     })
     .usage('Usage: $0 [options]\n\n')
     .example('\nTake snapshot\n $ $0 snapshot')

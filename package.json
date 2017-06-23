@@ -4,6 +4,7 @@
   "engines": {
     "node": "6.x.x"
   },
+  "main": "src/index.js",
   "description": "",
   "author": "Alvar Carto",
   "license": "UNLICENSED",
@@ -15,7 +16,9 @@
     "bluebird": "^3.4.6",
     "common-tags": "^1.4.0",
     "geolib": "^2.0.22",
+    "js-combinatorics": "^0.5.2",
     "lodash": "^4.17.2",
+    "minimatch": "^3.0.4",
     "pretty-bytes": "^4.0.2",
     "qs": "^6.4.0",
     "request": "^2.81.0",
@@ -31,6 +34,7 @@
     "nodemon": "^1.11.0"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "snapshot": "node src/index.js snapshot",
+    "compare": "node src/index.js compare"
   }
 }
