@@ -28,7 +28,8 @@ const barcelonaAttrs = {
   labelText: '(assigned later)',
 };
 const cp = combinatorics.cartesianProduct(posterStyles, mapStyles, sizes, orientations);
-const posters = _.map(cp.toArray(), ([posterStyle, mapStyle, size, orientation]) =>
+
+/*const posters = _.map(cp.toArray(), ([posterStyle, mapStyle, size, orientation]) =>
   _.extend({}, barcelonaAttrs, {
     posterStyle,
     mapStyle,
@@ -36,6 +37,8 @@ const posters = _.map(cp.toArray(), ([posterStyle, mapStyle, size, orientation])
     orientation,
   })
 );
+*/
+const posters = require('./posters-gallery');
 
 function getCenter(poster) {
   const center = geolib.getCenter([
