@@ -2,15 +2,8 @@ const _ = require('lodash');
 const geolib = require('geolib');
 const combinatorics = require('js-combinatorics');
 
-const posterStyles = [
-  'sharp', 'classic', 'sans', 'bw',
-  'pacific', 'summer', 'round',
-];
-const mapStyles = [
-  'bw', 'gray', 'black', 'petrol',
-  'iceberg', 'marshmellow', 'copper',
-  'madang',
-];
+const posterStyles = ['sharp', 'classic', 'sans', 'bw'];
+const mapStyles = ['bw', 'gray', 'black', 'petrol', 'copper'];
 const sizes = ['30x40cm', '50x70cm', '70x100cm'];
 const orientations = ['landscape', 'portrait'];
 
