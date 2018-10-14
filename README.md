@@ -24,5 +24,5 @@ responded.
   Or use [autoenv](https://github.com/kennethreitz/autoenv).
 
 * `npm install`
-* `npm run snapshot` Take first snapshot from render API
-* `npm run verify` Verify current render API against latest snapshot
+* `npm run snapshot` Save or update snapshot of current render API state into S3
+* `npm run compare` Compare current render API against latest snapshot in S3

@@ -6,6 +6,7 @@ const sharp = require('sharp');
 const minimatch = require('minimatch');
 const request = require('request-promise');
 const prettyBytes = require('pretty-bytes');
+const promiseRetryify = require('promise-retryify');
 const { createS3 } = require('./util/aws');
 const { createPosterImageUrl } = require('./util');
 const logger = require('./util/logger')(__filename);
@@ -36,6 +37,10 @@ function fetchPosterFromRenderApi(poster) {
   });
 }
 
+const retryingFetchPosterFromRenderApi = promiseRetryify(fetchPosterFromRenderApi, {
+  beforeRetry: retryCount => logger.info(`Retrying poster download from render api (${retryCount}) ..`),
+});
+
 function fetchPosterFromS3(poster) {
   const posterApiUrl = getS3Url(poster);
   logger.info(`Downloading poster from "${posterApiUrl}" ..`);
@@ -51,6 +56,10 @@ function fetchPosterFromS3(poster) {
     throw err;
   });
 }
+
+const retryingFetchPosterFromS3 = promiseRetryify(fetchPosterFromS3, {
+  beforeRetry: retryCount => logger.info(`Retrying poster download from S3 (${retryCount}) ..`),
+});
 
 function uploadPosterToS3(poster, data) {
   logger.info('Uploading poster to S3 ..');
@@ -169,8 +178,8 @@ function compareAll(opts) {
 
   BPromise.map(posters, poster =>
     BPromise.props({
-      apiResponse: fetchPosterFromRenderApi(poster),
-      s3Response: fetchPosterFromS3(poster),
+      apiResponse: retryingFetchPosterFromRenderApi(poster),
+      s3Response: retryingFetchPosterFromS3(poster),
     })
       .then((result) => {
         const apiBytes = parseInt(result.apiResponse.headers['content-length'], 10);
@@ -207,7 +216,7 @@ function compareAll(opts) {
         const promisifiedDiff = BPromise.promisifyAll(diff);
         return promisifiedDiff.runAsync();
       })
-      .tap(result => {
+      .tap((result) => {
         logger.info(`Found ${result.differences} differences`);
         if (result.differences < 1) {
           fs.unlinkSync(`${S3_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);

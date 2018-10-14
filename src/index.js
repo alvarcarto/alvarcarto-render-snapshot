@@ -14,7 +14,7 @@ function getUserOpts() {
       core.compare(argv);
     })
     .option('originals', {
-      describe: 'If true, original images are saved when snapshotting',
+      describe: 'If true, original sized images are saved when snapshotting',
       default: false,
       type: 'boolean',
     })
