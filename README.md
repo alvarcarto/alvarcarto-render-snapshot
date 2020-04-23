@@ -26,3 +26,22 @@ responded.
 * `npm install`
 * `npm run snapshot` Save or update snapshot of current render API state into S3
 * `npm run compare` Compare current render API against latest snapshot in S3
+
+
+### More examples
+
+
+**Take a snapshot of images into the local disk:**
+
+`node src/index.js snapshot --target local`
+
+*This can e.g. be uploaded to S3*
+
+**Only do snapshots for poster renders:**
+
+`node src/index.js snapshot --service render`
+
+**Only compare smaller subset of poster renders:**
+
+`node src/index.js compare --service render --only 'locationId:hki*'`
+

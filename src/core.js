@@ -8,63 +8,79 @@ const request = require('request-promise');
 const prettyBytes = require('pretty-bytes');
 const promiseRetryify = require('promise-retryify');
 const { createS3 } = require('./util/aws');
-const { createPosterImageUrl } = require('./util');
+const { createPosterImageUrl, createPlacementImageUrl, createRenderMapImageUrl } = require('./util');
 const logger = require('./util/logger')(__filename);
 const config = require('./config');
-const POSTERS = require('./posters');
+const { getPosters } = require('./posters');
 
-const API_FILE_PREFIX = 'images/api-poster-';
-const S3_FILE_PREFIX = 'images/s3-poster-';
-const DIFF_FILE_PREFIX = 'images/diff-';
+const API_FILE_PREFIX = 'images/compare/api-';
+const S3_FILE_PREFIX = 'images/compare/s3-';
+const DIFF_FILE_PREFIX = 'images/compare/diff-';
 const s3 = createS3();
 
-function fetchPosterFromRenderApi(poster) {
-  const posterApiUrl = createPosterImageUrl(poster);
-  logger.info(`Downloading poster from "${posterApiUrl}" ..`);
-
-  return request({
-    url: posterApiUrl,
-    headers: {
-      'x-api-key': config.RENDER_API_KEY,
-    },
+async function downloadImage(url) {
+  const res = request({
+    url,
     timeout: 300 * 1000,
     encoding: null,
     resolveWithFullResponse: true,
-  })
-  .catch((err) => {
-    logger.error(`Error fetching poster from render api: ${err}`);
-    throw err;
   });
+
+  return res;
 }
 
-const retryingFetchPosterFromRenderApi = promiseRetryify(fetchPosterFromRenderApi, {
-  beforeRetry: retryCount => logger.info(`Retrying poster download from render api (${retryCount}) ..`),
+function getImageUrl(service, poster) {
+  const obj = _.omit(poster, ['locationId']);
+
+  switch (service) {
+    case 'render':
+      return createPosterImageUrl(obj);
+    case 'tile':
+      return createPosterImageUrl(obj, { useTileRender: true });
+    case 'render-map':
+      return createRenderMapImageUrl(obj);
+    case 'placement':
+      return createPlacementImageUrl(obj);
+    default:
+      throw new Error(`Unknown service: ${service}`);
+  }
+}
+
+async function fetchImageFromService(service, poster) {
+  const imageUrl = getImageUrl(service, poster);
+  logger.info(`Downloading poster from "${imageUrl}" ..`);
+
+  const res = await downloadImage(imageUrl);
+  return res;
+}
+
+const errorLogger = (err) => {
+  logger.error(`Error: ${err}`);
+  return true;
+};
+
+const retryingFetchImageFromService = promiseRetryify(fetchImageFromService, {
+  beforeRetry: retryCount => logger.info(`Retrying image download (${retryCount}) ..`),
+  shouldRetry: errorLogger,
 });
 
-function fetchPosterFromS3(poster) {
-  const posterApiUrl = getS3Url(poster);
+function fetchPosterFromS3(service, poster) {
+  const posterApiUrl = getS3Url(service, poster);
   logger.info(`Downloading poster from "${posterApiUrl}" ..`);
 
-  return request({
-    url: posterApiUrl,
-    timeout: 300 * 1000,
-    encoding: null,
-    resolveWithFullResponse: true,
-  })
-  .catch((err) => {
-    logger.error(`Error fetching poster from S3: ${err}`);
-    throw err;
-  });
+  const res = downloadImage(posterApiUrl);
+  return res;
 }
 
 const retryingFetchPosterFromS3 = promiseRetryify(fetchPosterFromS3, {
-  beforeRetry: retryCount => logger.info(`Retrying poster download from S3 (${retryCount}) ..`),
+  beforeRetry: retryCount => logger.info(`Retrying image download from S3 (${retryCount}) ..`),
+  shouldRetry: errorLogger,
 });
 
-function uploadPosterToS3(poster, data) {
+function uploadPosterToS3(service, poster, data) {
   logger.info('Uploading poster to S3 ..');
 
-  const key = posterToFileBaseName(poster);
+  const key = posterToFileBaseName(service, poster);
   const params = {
     Bucket: config.AWS_S3_BUCKET_NAME,
     ACL: 'public-read',
@@ -81,22 +97,22 @@ function uploadPosterToS3(poster, data) {
     });
 }
 
-function saveFileToLocal(poster, data) {
-  const key = posterToFileBaseName(poster);
-  return fs.writeFileAsync(`images/snapshots/${key}.png`, data, { encoding: null })
-    .tap(() => logger.info(`Saved file to images/snapshots/${key}.png`))
+function saveFileToLocal(service, poster, data) {
+  const key = posterToFileBaseName(service, poster);
+  return fs.writeFileAsync(`images/snapshot/${key}.png`, data, { encoding: null })
+    .tap(() => logger.info(`Saved file to images/snapshot/${key}.png`))
     .catch((err) => {
       logger.error(`Error saving poster to local: ${err}`);
       throw err;
     });
 }
 
-function savePosterToTarget(target, poster, imageData) {
+function savePosterToTarget(target, service, poster, imageData) {
   if (target === 's3') {
-    return uploadPosterToS3(poster, imageData);
+    return uploadPosterToS3(service, poster, imageData);
   }
 
-  return saveFileToLocal(poster, imageData);
+  return saveFileToLocal(service, poster, imageData);
 }
 
 function filterPosters(posters, opts) {
@@ -127,111 +143,118 @@ function filterPosters(posters, opts) {
   });
 }
 
-function takeSnapshot(opts) {
-  const posters = filterPosters(POSTERS, opts);
-  logger.info(`Taking snapshots of ${posters.length} posters ..`);
+function logPosterCount(opts) {
+  logger.info('Going through the following images:');
 
-  BPromise.map(posters, poster =>
-    fetchPosterFromRenderApi(poster)
-      .then((res) => {
-        const bytes = parseInt(res.headers['content-length'], 10);
-        logger.info(`Downloaded ${prettyBytes(bytes)} data`);
-
-        if (!opts.originals && config.RESIZE_TO_HEIGHT) {
-          logger.info(`Resizing picture to ${config.RESIZE_TO_HEIGHT}px height ..`);
-          return sharp(res.body)
-            .limitInputPixels(false)
-            .resize(null, config.RESIZE_TO_HEIGHT)
-            .png()
-            .toBuffer();
-        }
-
-        return res.body;
-      })
-      .then(imageData => savePosterToTarget(opts.target, poster, imageData))
-      .catch((err) => {
-        logger.error(`Error processing poster: ${err}`);
-        throw err;
-      }),
-    { concurrency: 1 }
-  );
+  _.forEach(opts.services, (service) => {
+    const posters = getPosters(service);
+    const filteredPosters = filterPosters(posters, opts);
+    logger.info(`${filteredPosters.length} combinations for ${service} service`);
+  });
 }
 
-function posterToFileBaseName(poster) {
+
+async function takeSnapshot(opts) {
+  logPosterCount(opts);
+
+  await BPromise.each(opts.services, async (service) => {
+    const posters = getPosters(service);
+    const filteredPosters = filterPosters(posters, opts);
+    logger.info(`Taking snapshots of ${filteredPosters.length} images for service ${service} ..`);
+
+    await BPromise.each(filteredPosters, async (poster) => {
+      const res = await fetchImageFromService(service, poster);
+      const bytes = parseInt(res.headers['content-length'], 10);
+      logger.info(`Downloaded ${prettyBytes(bytes)} data`);
+
+      let imageData = res.body;
+      if (!opts.originals && config.MAX_DIMENSION) {
+        logger.info(`Resizing picture to max ${config.MAX_DIMENSION}px width or height ..`);
+        imageData = await resizeImage(res.body, config.MAX_DIMENSION);
+      }
+
+      await savePosterToTarget(opts.target, service, poster, imageData);
+    });
+  });
+}
+
+function posterToFileBaseName(service, poster) {
   return [
-    poster.labelHeader.toLowerCase(),
+    service,
+    poster.locationId,
     poster.size,
     poster.posterStyle,
     poster.mapStyle,
     poster.orientation,
+    `z${poster.zoomLevel}`,
   ].join('-');
 }
 
-function getS3Url(poster) {
-  const name = posterToFileBaseName(poster);
+function getS3Url(service, poster) {
+  const name = posterToFileBaseName(service, poster);
   return `https://alvarcarto-render-snapshots.s3-eu-west-1.amazonaws.com/${name}.png`;
 }
 
-function compareAll(opts) {
-  const posters = filterPosters(POSTERS, opts);
-  logger.info(`Comparing ${posters.length} posters ..`);
+async function resizeImage(input, maxDimension) {
+  const { width, height } = await sharp(input).metadata();
 
-  BPromise.map(posters, poster =>
-    BPromise.props({
-      apiResponse: retryingFetchPosterFromRenderApi(poster),
-      s3Response: retryingFetchPosterFromS3(poster),
-    })
-      .then((result) => {
-        const apiBytes = parseInt(result.apiResponse.headers['content-length'], 10);
-        logger.info(`Downloaded ${prettyBytes(apiBytes)} data from Render API`);
+  const resizeW = width > height ? maxDimension : null;
+  const resizeH = width > height ? null : maxDimension;
 
-        const s3Bytes = parseInt(result.s3Response.headers['content-length'], 10);
-        logger.info(`Downloaded ${prettyBytes(s3Bytes)} data from S3`);
+  const image = await sharp(input, { limitInputPixels: false })
+    .resize(resizeW, resizeH)
+    .png()
+    .toBuffer();
+  return image;
+}
 
-        logger.info(`Resizing picture to ${config.RESIZE_TO_HEIGHT}px height ..`);
-        return BPromise.props({
-          saveApiFile:
-            sharp(result.apiResponse.body)
-              .limitInputPixels(false)
-              .resize(null, config.RESIZE_TO_HEIGHT)
-              .png()
-              .toFile(`${API_FILE_PREFIX}${posterToFileBaseName(poster)}.png`),
 
-          saveS3File:
-            sharp(result.s3Response.body)
-              .limitInputPixels(false)
-              .resize(null, config.RESIZE_TO_HEIGHT)
-              .png()
-              .toFile(`${S3_FILE_PREFIX}${posterToFileBaseName(poster)}.png`),
-        });
-      })
-      .then(() => {
-        const diff = new BlinkDiff({
-          imageAPath: `${S3_FILE_PREFIX}${posterToFileBaseName(poster)}.png`,
-          imageBPath: `${API_FILE_PREFIX}${posterToFileBaseName(poster)}.png`,
-          thresholdType: BlinkDiff.THRESHOLD_PERCENT,
-          threshold: 0.01,
-          imageOutputPath: `${DIFF_FILE_PREFIX}${posterToFileBaseName(poster)}.png`,
-        });
-        const promisifiedDiff = BPromise.promisifyAll(diff);
-        return promisifiedDiff.runAsync();
-      })
-      .tap((result) => {
-        logger.info(`Found ${result.differences} differences`);
-        if (result.differences < 1) {
-          fs.unlinkSync(`${S3_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
-          fs.unlinkSync(`${API_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
-          fs.unlinkSync(`${DIFF_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
-        } else {
-          logger.info('Saved diff under images/');
-        }
-      })
-      .catch((err) => {
-        logger.error(`Error processing poster: ${err}`);
-        throw err;
-      }),
-    { concurrency: 1 }
-  );
+async function compareAll(opts) {
+  logPosterCount(opts);
+
+  await BPromise.each(opts.services, async (service) => {
+    const posters = getPosters(service);
+    const filteredPosters = filterPosters(posters, opts);
+    logger.info(`Comparing ${filteredPosters.length} images for ${service} ..`);
+    logger.info(`This totals ${filteredPosters.length * 2} image downloads`);
+
+    await BPromise.each(filteredPosters, async (poster) => {
+      const apiResponse = await retryingFetchImageFromService(service, poster);
+      const s3Response = await retryingFetchPosterFromS3(service, poster);
+
+      const apiBytes = parseInt(apiResponse.headers['content-length'], 10);
+      logger.info(`Downloaded ${prettyBytes(apiBytes)} data from ${service} service`);
+
+      const s3Bytes = parseInt(s3Response.headers['content-length'], 10);
+      logger.info(`Downloaded ${prettyBytes(s3Bytes)} data from S3`);
+
+      logger.info(`Resizing pictures to ${config.MAX_DIMENSION}px width or height ..`);
+      await sharp(await resizeImage(apiResponse.body, config.MAX_DIMENSION))
+        .toFile(`${API_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
+
+      await sharp(await resizeImage(s3Response.body, config.MAX_DIMENSION))
+        .toFile(`${S3_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
+
+      const diff = new BlinkDiff({
+        imageAPath: `${S3_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`,
+        imageBPath: `${API_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`,
+        thresholdType: BlinkDiff.THRESHOLD_PERCENT,
+        threshold: 0.01,
+        imageOutputPath: `${DIFF_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`,
+      });
+      const promisifiedDiff = BPromise.promisifyAll(diff);
+      const result = await promisifiedDiff.runAsync();
+
+      logger.info(`Found ${result.differences} differences`);
+      if (result.differences < 1) {
+        fs.unlinkSync(`${S3_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
+        fs.unlinkSync(`${API_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
+        fs.unlinkSync(`${DIFF_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
+      } else {
+        logger.info('Saved diff under images/');
+      }
+    });
+  });
 }
 
 module.exports = {

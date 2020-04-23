@@ -5,13 +5,15 @@ const VERSION = require('../package.json').version;
 
 const defaultOpts = {};
 
-function getUserOpts() {
-  const userOpts = yargs
-    .command('snapshot', 'take a snapshot', () => {}, (argv) => {
-      core.snapshot(argv);
+function main() {
+  yargs
+    .command('snapshot', 'take a snapshot', () => {}, async (argv) => {
+      validateAndTransformArgv(argv);
+      await core.snapshot(argv);
     })
-    .command('compare', 'compare current status to snapshot', () => {}, (argv) => {
-      core.compare(argv);
+    .command('compare', 'compare current status to snapshot', () => {}, async (argv) => {
+      validateAndTransformArgv(argv);
+      await core.compare(argv);
     })
     .option('originals', {
       describe: 'If true, original sized images are saved when snapshotting',
@@ -28,6 +30,11 @@ function getUserOpts() {
       default: '**',
       type: 'string',
     })
+    .option('services', {
+      describe: 'Services to take diffs from',
+      default: ['render', 'render-map', 'tile', 'placement'],
+      type: 'string',
+    })
     .usage('Usage: $0 [options]\n\n')
     .example('\nTake snapshot\n $ $0 snapshot')
     .example('\nCompare snapshot to current status\n $ $0 compare')
@@ -36,24 +43,19 @@ function getUserOpts() {
     .alias('v', 'version')
     .version(VERSION)
     .argv;
-
-  return userOpts;
 }
 
-function validateAndTransformOpts(opts) {
-  return opts;
-}
+function validateAndTransformArgv(argv) {
+  if (!_.isArray(argv.services)) {
+    argv.services = [argv.services];
+  }
 
-function getOpts() {
-  const userOpts = getUserOpts();
-  const opts = _.merge(defaultOpts, userOpts);
-  return validateAndTransformOpts(opts);
+  return argv;
 }
 
 if (require.main === module) {
-  let opts;
   try {
-    opts = getOpts();
+    main();
   } catch (err) {
     if (err.argumentError) {
       console.error(err.message);
@@ -66,5 +68,4 @@ if (require.main === module) {
 
 module.exports = {
   defaultOpts,
-  getOpts,
 };
