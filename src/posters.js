@@ -45,7 +45,7 @@ function getCombinations(service) {
         posterStyles: ['null'],
         mapStyles: ['bw', 'gray', 'petrol', 'contrast-black'],
         sizes: ['A6'],
-        orientations: ['landscape'],
+        orientations: ['portrait'],
         locationIds: _.map(locations, 'id'),
         zoomLevels: _.range(6, 16),
         filter: (poster) => {
@@ -65,7 +65,7 @@ function getCombinations(service) {
         posterStyles: ['bw'],
         mapStyles: ['bw', 'petrol', 'petrol', 'contrast-black'],
         sizes: ['30x40cm'],
-        orientations: ['landscape'],
+        orientations: ['portrait'],
         locationIds: ['tokyo_c'],
         zoomLevels: [11],
       };
@@ -73,9 +73,9 @@ function getCombinations(service) {
     case 'placement':
       return {
         posterStyles: ['bw'],
-        mapStyles: ['bw'],
+        mapStyles: ['bw', 'black', 'petrol'],
         sizes: ['30x40cm'],
-        orientations: ['landscape'],
+        orientations: ['portrait'],
         locationIds: ['tokyo_c'],
         zoomLevels: [11],
       };
