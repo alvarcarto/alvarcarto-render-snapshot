@@ -47,7 +47,7 @@ function getCombinations(service) {
         sizes: ['A6'],
         orientations: ['portrait'],
         locationIds: _.map(locations, 'id'),
-        zoomLevels: _.range(6, 16),
+        zoomLevels: _.range(6, 17),
         filter: (poster) => {
           // Remove all posters of alternative locations when zoom level is too high
           // They don't differ much, since they are usually somewhat in the same area
