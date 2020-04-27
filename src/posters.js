@@ -63,7 +63,7 @@ function getCombinations(service) {
     case 'tile':
       return {
         posterStyles: ['bw'],
-        mapStyles: ['bw', 'petrol', 'petrol', 'contrast-black'],
+        mapStyles: ['bw', 'petrol', 'black', 'contrast-black'],
         sizes: ['30x40cm'],
         orientations: ['portrait'],
         locationIds: ['tokyo_c'],
