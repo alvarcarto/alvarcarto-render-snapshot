@@ -62,6 +62,7 @@ const errorLogger = (err) => {
 const retryingFetchImageFromService = promiseRetryify(fetchImageFromService, {
   beforeRetry: retryCount => logger.info(`Retrying image download (${retryCount}) ..`),
   shouldRetry: errorLogger,
+  retryTimeout: count => count * 10000,
 });
 
 function fetchPosterFromS3(service, poster) {
@@ -75,6 +76,7 @@ function fetchPosterFromS3(service, poster) {
 const retryingFetchPosterFromS3 = promiseRetryify(fetchPosterFromS3, {
   beforeRetry: retryCount => logger.info(`Retrying image download from S3 (${retryCount}) ..`),
   shouldRetry: errorLogger,
+  retryTimeout: count => count * 10000,
 });
 
 function uploadPosterToS3(service, poster, data) {
