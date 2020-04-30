@@ -25,6 +25,11 @@ function main() {
       default: 's3',
       type: 'string',
     })
+    .option('main-location-id', {
+      describe: 'Main location id. For example tokyo_c or hki_c',
+      default: 'tokyo_c',
+      type: 'string',
+    })
     .option('only', {
       describe: 'Process only the posters which match filters',
       default: '**',

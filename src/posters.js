@@ -28,7 +28,11 @@ function prettyLabel(poster) {
   return `${first.val}°${first.label} / ${second.val}°${second.label}`;
 }
 
-function getCombinations(service) {
+function getCombinations(service, _opts = {}) {
+  const opts = _.merge({
+    mainLocationId: 'tokyo_c',
+  }, _opts);
+
   switch (service) {
     case 'render':
       return {
@@ -36,7 +40,7 @@ function getCombinations(service) {
         mapStyles: ['bw', 'gray', 'black', 'petrol'],
         sizes: ['30x40cm', '50x70cm', '70x100cm', '12x18inch', '18x24inch', '24x36inch'],
         orientations: ['landscape', 'portrait'],
-        locationIds: ['tokyo_c'],
+        locationIds: [opts.mainLocationId],
         zoomLevels: [11],
       };
     case 'render-map':
@@ -66,7 +70,7 @@ function getCombinations(service) {
         mapStyles: ['bw', 'petrol', 'black', 'contrast-black'],
         sizes: ['30x40cm'],
         orientations: ['portrait'],
-        locationIds: ['tokyo_c'],
+        locationIds: [opts.mainLocationId],
         zoomLevels: [11],
       };
     case 'minimal':
@@ -76,7 +80,7 @@ function getCombinations(service) {
         mapStyles: ['bw', 'black', 'petrol'],
         sizes: ['30x40cm'],
         orientations: ['portrait'],
-        locationIds: ['tokyo_c'],
+        locationIds: [opts.mainLocationId],
         zoomLevels: [11],
       };
     case 'all':
@@ -92,8 +96,8 @@ function getCombinations(service) {
   }
 }
 
-function getPosters(service) {
-  const { posterStyles, mapStyles, sizes, orientations, locationIds, zoomLevels, filter } = getCombinations(service);
+function getPosters(service, opts = {}) {
+  const { posterStyles, mapStyles, sizes, orientations, locationIds, zoomLevels, filter } = getCombinations(service, opts);
 
   // Create combinations of all possible:
   // posterStyle, mapStyle, size and orientation

@@ -118,13 +118,29 @@ function savePosterToTarget(target, service, poster, imageData) {
 }
 
 function filterPosters(posters, opts) {
-  if (!_.isString(opts.only) || opts.only === '**') {
+  if (!_.isString(opts.only) && !_.isArray(opts.only)) {
+    return posters;
+  }
+
+  if (_.isString(opts.only)) {
+    return filterPostersWithPattern(posters, opts.only);
+  }
+
+  return _.reduce(opts.only, (memo, pattern) => {
+    const filtered = filterPostersWithPattern(memo, pattern);
+    logger.info(`Filtering posters with ${pattern} .. ${filtered.length} posters left`);
+    return filtered;
+  }, posters);
+}
+
+function filterPostersWithPattern(posters, pattern) {
+  if (!_.isString(pattern) || pattern === '**') {
     return posters;
   }
 
   let keyPattern;
   let valPattern;
-  const parts = opts.only.split(':');
+  const parts = pattern.split(':');
 
   if (parts.length < 2) {
     keyPattern = '**';
@@ -149,7 +165,7 @@ function logPosterCount(opts) {
   logger.info('Going through the following images:');
 
   _.forEach(opts.services, (service) => {
-    const posters = getPosters(service);
+    const posters = getPosters(service, { mainLocationId: opts.mainLocationId });
     const filteredPosters = filterPosters(posters, opts);
     logger.info(`${filteredPosters.length} combinations for ${service} service`);
   });
@@ -160,7 +176,7 @@ async function takeSnapshot(opts) {
   logPosterCount(opts);
 
   await BPromise.each(opts.services, async (service) => {
-    const posters = getPosters(service);
+    const posters = getPosters(service, { mainLocationId: opts.mainLocationId });
     const filteredPosters = filterPosters(posters, opts);
     logger.info(`Taking snapshots of ${filteredPosters.length} images for service ${service} ..`);
 
@@ -215,7 +231,7 @@ async function compareAll(opts) {
   logPosterCount(opts);
 
   await BPromise.each(opts.services, async (service) => {
-    const posters = getPosters(service);
+    const posters = getPosters(service, { mainLocationId: opts.mainLocationId });
     const filteredPosters = filterPosters(posters, opts);
     logger.info(`Comparing ${filteredPosters.length} images for ${service} ..`);
     logger.info(`This totals ${filteredPosters.length * 2} image downloads`);
