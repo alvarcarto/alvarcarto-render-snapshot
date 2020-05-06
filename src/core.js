@@ -267,14 +267,14 @@ async function compareAll(opts) {
 
       logger.info(`Found ${result.differences} differences`);
       if (result.differences < 1) {
-        fs.unlinkSync(`${S3_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
-        fs.unlinkSync(`${API_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
-        fs.unlinkSync(`${DIFF_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
+        fs.unlinkSync(`${S3_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
+        fs.unlinkSync(`${API_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
+        fs.unlinkSync(`${DIFF_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
       } else if (SAVE_ALL_FILES) {
         logger.info('Saved diff and fetched images under images/');
       } else {
-        fs.unlinkSync(`${S3_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
-        fs.unlinkSync(`${API_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
+        fs.unlinkSync(`${S3_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
+        fs.unlinkSync(`${API_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
         logger.info('Saved diff under images/');
       }
     });
