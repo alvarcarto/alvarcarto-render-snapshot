@@ -16,6 +16,7 @@ const { getPosters } = require('./posters');
 const API_FILE_PREFIX = 'images/compare/api-';
 const S3_FILE_PREFIX = 'images/compare/s3-';
 const DIFF_FILE_PREFIX = 'images/compare/diff-';
+const SAVE_ALL_FILES = false;
 const s3 = createS3();
 
 async function downloadImage(url) {
@@ -269,7 +270,11 @@ async function compareAll(opts) {
         fs.unlinkSync(`${S3_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
         fs.unlinkSync(`${API_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
         fs.unlinkSync(`${DIFF_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
+      } else if (SAVE_ALL_FILES) {
+        logger.info('Saved diff and fetched images under images/');
       } else {
+        fs.unlinkSync(`${S3_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
+        fs.unlinkSync(`${API_FILE_PREFIX}${posterToFileBaseName(poster)}.png`);
         logger.info('Saved diff under images/');
       }
     });
