@@ -61,6 +61,7 @@ const errorLogger = (err) => {
 
 const retryingFetchImageFromService = promiseRetryify(fetchImageFromService, {
   beforeRetry: retryCount => logger.info(`Retrying image download (${retryCount}) ..`),
+  maxRetries: 20,
   shouldRetry: errorLogger,
   retryTimeout: count => count * 10000,
 });
