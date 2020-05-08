@@ -182,7 +182,7 @@ async function takeSnapshot(opts) {
     const filteredPosters = filterPosters(posters, opts);
     logger.info(`Taking snapshots of ${filteredPosters.length} images for service ${service} ..`);
 
-    await BPromise.each(filteredPosters, async (poster) => {
+    await BPromise.map(filteredPosters, async (poster) => {
       const res = await fetchImageFromService(service, poster);
       const bytes = parseInt(res.headers['content-length'], 10);
       logger.info(`Downloaded ${prettyBytes(bytes)} data`);
@@ -194,7 +194,7 @@ async function takeSnapshot(opts) {
       }
 
       await savePosterToTarget(opts.target, service, poster, imageData);
-    });
+    }, { concurrency: opts.concurrency });
   });
 }
 
@@ -238,7 +238,7 @@ async function compareAll(opts) {
     logger.info(`Comparing ${filteredPosters.length} images for ${service} ..`);
     logger.info(`This totals ${filteredPosters.length * 2} image downloads`);
 
-    await BPromise.each(filteredPosters, async (poster) => {
+    await BPromise.map(filteredPosters, async (poster) => {
       const apiResponse = await retryingFetchImageFromService(service, poster);
       const s3Response = await retryingFetchPosterFromS3(service, poster);
 
@@ -277,7 +277,7 @@ async function compareAll(opts) {
         fs.unlinkSync(`${API_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
         logger.info('Saved diff under images/');
       }
-    });
+    }, { concurrency: opts.concurrency });
   });
 }
 

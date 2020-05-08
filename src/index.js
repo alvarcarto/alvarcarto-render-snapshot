@@ -25,6 +25,12 @@ function main() {
       default: 's3',
       type: 'string',
     })
+    .option('concurrency', {
+      describe: 'Concurrency limit for requests.',
+      default: 1,
+      type: 'integer',
+    })
+    .alias('c', 'concurrency')
     .option('main-location-id', {
       describe: 'Main location id. For example tokyo_c or hki_c',
       default: 'tokyo_c',
