@@ -45,3 +45,38 @@ responded.
 
 `node src/index.js compare --service render --only 'locationId:hki*'`
 
+
+## Known issues
+
+
+### ERROR: Stream not writable
+
+This explains the likely cause:
+
+* https://www.bountysource.com/issues/39261863-backstopjs-test-execution-failing-error-stream-not-writable
+* Fix PR: https://github.com/lukeapage/pngjs/pull/130
+
+```
+/home/circleci/project/alvarcarto-render-snapshot/node_modules/blink-diff/index.js:355
+
+			throw new Error('ERROR: ' + text);
+
+			^
+Error: ERROR: Stream not writable
+    at Object.<anonymous> (/home/circleci/project/alvarcarto-render-snapshot/node_modules/blink-diff/index.js:355:10)
+    at exports.PNG.<anonymous> (/home/circleci/project/alvarcarto-render-snapshot/node_modules/pngjs-image/index.js:28:12)
+    at exports.PNG.emit (events.js:203:15)
+    at exports.PNG.EventEmitter.emit (domain.js:448:20)
+    at module.exports.emit (events.js:198:13)
+    at module.exports.EventEmitter.emit (domain.js:448:20)
+    at module.exports.ChunkStream.write (/home/circleci/project/alvarcarto-render-snapshot/node_modules/pngjs/lib/chunkstream.js:46:10)
+    at exports.PNG.PNG.write (/home/circleci/project/alvarcarto-render-snapshot/node_modules/pngjs/lib/png.js:92:16)
+    at ReadStream.ondata (_stream_readable.js:710:20)
+    at ReadStream.emit (events.js:198:13)
+    at ReadStream.EventEmitter.emit (domain.js:448:20)
+    at addChunk (_stream_readable.js:288:12)
+    at readableAddChunk (_stream_readable.js:269:11)
+    at ReadStream.Readable.push (_stream_readable.js:224:10)
+    at lazyFs.read (internal/fs/streams.js:181:12)
+    at FSReqWrap.wrapper [as oncomplete] (fs.js:467:17)
+```
