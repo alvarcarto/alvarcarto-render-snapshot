@@ -4,4 +4,7 @@ node_modules
 *.inlined.html
 
 images/**/*.png
+images/**/*.svg
+images/**/*.jpg
+images/**/*.pdf
 

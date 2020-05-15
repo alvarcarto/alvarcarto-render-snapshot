@@ -20,6 +20,11 @@ function main() {
       default: false,
       type: 'boolean',
     })
+    .option('temp-files', {
+      describe: 'If enabled, temporary files are also saved to disk',
+      default: false,
+      type: 'boolean',
+    })
     .option('target', {
       describe: 'Target where snapshots are saved. Options: s3, local',
       default: 's3',

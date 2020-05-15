@@ -35,16 +35,27 @@ function getCombinations(service, _opts = {}) {
 
   switch (service) {
     case 'render':
-      return {
+      return [{
         posterStyles: ['sharp', 'classic', 'sans', 'bw'],
         mapStyles: ['bw', 'gray', 'black', 'petrol'],
         sizes: ['30x40cm', '50x70cm', '70x100cm', '12x18inch', '18x24inch', '24x36inch'],
         orientations: ['landscape', 'portrait'],
         locationIds: [opts.mainLocationId],
         zoomLevels: [11],
-      };
+        formats: ['png'],
+        labelsEnabledFlags: [true],
+      }, {
+        posterStyles: ['classic'],
+        mapStyles: ['bw', 'contrast-black'],
+        sizes: ['70x100cm'],
+        orientations: ['portrait'],
+        locationIds: [opts.mainLocationId],
+        zoomLevels: [11],
+        formats: ['png', 'jpg', 'svg'],
+        labelsEnabledFlags: [true, false],
+      }];
     case 'render-map':
-      return {
+      return [{
         // Will be visible in the filename
         posterStyles: ['null'],
         mapStyles: ['bw', 'gray', 'petrol', 'contrast-black'],
@@ -52,6 +63,8 @@ function getCombinations(service, _opts = {}) {
         orientations: ['portrait'],
         locationIds: _.map(locations, 'id'),
         zoomLevels: _.range(6, 17),
+        formats: ['png'],
+        labelsEnabledFlags: [true],
         filter: (poster) => {
           // Remove all posters of alternative locations when zoom level is too high
           // They don't differ much, since they are usually somewhat in the same area
@@ -63,69 +76,87 @@ function getCombinations(service, _opts = {}) {
 
           return true;
         },
-      };
+      }];
     case 'tile':
-      return {
+      return [{
         posterStyles: ['bw'],
         mapStyles: ['bw', 'petrol', 'black', 'contrast-black'],
         sizes: ['30x40cm'],
         orientations: ['portrait'],
         locationIds: [opts.mainLocationId],
         zoomLevels: [11],
-      };
+        formats: ['png'],
+        labelsEnabledFlags: [true],
+      }];
     case 'minimal':
     case 'placement':
-      return {
+      return [{
         posterStyles: ['bw'],
         mapStyles: ['bw', 'black', 'petrol'],
         sizes: ['30x40cm'],
         orientations: ['portrait'],
         locationIds: [opts.mainLocationId],
         zoomLevels: [11],
-      };
+        formats: ['png'],
+        labelsEnabledFlags: [true],
+      }];
     case 'all':
     default:
-      return {
+      return [{
         posterStyles: ['sharp', 'classic', 'sans', 'bw'],
         mapStyles: ['bw', 'gray', 'black', 'petrol'],
         sizes: ['30x40cm', '50x70cm', '70x100cm', '12x18inch', '18x24inch', '24x36inch'],
         orientations: ['landscape', 'portrait'],
         locationIds: _.map(locations, 'id'),
         zoomLevels: _.range(4, 16),
-      };
+        formats: ['png'],
+        labelsEnabledFlags: [true],
+      }];
   }
 }
 
 function getPosters(service, opts = {}) {
-  const { posterStyles, mapStyles, sizes, orientations, locationIds, zoomLevels, filter } = getCombinations(service, opts);
+  const combinationsArr = getCombinations(service, opts);
 
-  // Create combinations of all possible:
-  // posterStyle, mapStyle, size and orientation
-  const cp = combinatorics.cartesianProduct(locationIds, posterStyles, mapStyles, sizes, orientations, zoomLevels);
-  const posters = _.map(cp.toArray(), ([locationId, posterStyle, mapStyle, size, orientation, zoomLevel]) => {
-    const location = _.find(locations, l => locationId === l.id);
-    if (!location) {
-      throw new Error(`Location not found with id: ${locationId}`);
-    }
+  const posters = [];
+  _.forEach(combinationsArr, (item) => {
+    const {
+      posterStyles, mapStyles, sizes,
+      formats, labelsEnabledFlags, orientations,
+      locationIds, zoomLevels, filter,
+    } = item;
+    // Create combinations of all possible:
+    // posterStyle, mapStyle, size and orientation
+    const cp = combinatorics.cartesianProduct(locationIds, labelsEnabledFlags, formats, posterStyles, mapStyles, sizes, orientations, zoomLevels);
+    const postersBatch = _.map(cp.toArray(), ([locationId, labelsEnabled, format, posterStyle, mapStyle, size, orientation, zoomLevel]) => {
+      const location = _.find(locations, l => locationId === l.id);
+      if (!location) {
+        throw new Error(`Location not found with id: ${locationId}`);
+      }
 
-    const bounds = getBounds(size, orientation, location.lat, location.lng, zoomLevel);
+      const bounds = getBounds(size, orientation, location.lat, location.lng, zoomLevel);
 
-    return _.extend({}, _.omit(location, ['id']), bounds, {
-      posterStyle,
-      mapStyle,
-      size,
-      orientation,
-      zoomLevel,
-      locationId: location.id,
+      return _.extend({}, _.omit(location, ['id']), bounds, {
+        posterStyle,
+        mapStyle,
+        labelsEnabled,
+        format,
+        size,
+        orientation,
+        zoomLevel,
+        locationId: location.id,
+      });
     });
+    const withLabels = _.map(postersBatch, poster => _.extend({}, poster, {
+      labelText: prettyLabel(poster),
+    }));
+
+    const filterFunc = _.isFunction(filter) ? filter : () => true;
+    const filtered = _.filter(withLabels, filterFunc);
+    _.forEach(filtered, p => posters.push(p));
   });
 
-  const withLabels = _.map(posters, poster => _.extend({}, poster, {
-    labelText: prettyLabel(poster),
-  }));
-
-  const filterFunc = _.isFunction(filter) ? filter : () => true;
-  return _.filter(withLabels, filterFunc);
+  return posters;
 }
 
 module.exports = {

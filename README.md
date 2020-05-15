@@ -46,6 +46,11 @@ responded.
 `node src/index.js compare --service render --only 'locationId:hki*'`
 
 
+**Only PDF renders:**
+
+`node src/index.js snapshot --service render --only 'format:pdf'`
+
+
 ## Known issues
 
 
