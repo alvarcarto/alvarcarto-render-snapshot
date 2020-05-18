@@ -111,8 +111,9 @@ async function fetchPosterFromS3(service, poster) {
   logger.info(`Downloading poster from "${posterApiUrl}" ..`);
 
   try {
+    const res = await downloadImage(posterApiUrl);
     return {
-      data: await downloadImage(posterApiUrl),
+      data: res.data,
       fallback: false,
     };
   } catch (err) {
