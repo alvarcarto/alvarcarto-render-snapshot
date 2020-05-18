@@ -53,14 +53,14 @@ function getImageUrl(service, poster) {
 async function convertFormatToPng(data, originalFormat) {
   logger.info(`Converting ${originalFormat} format to PNG .. `);
   if (originalFormat === 'jpg') {
-    const sharpObj = sharp(data);
+    const sharpObj = sharp(data, { limitInputPixels: false });
     const meta = await sharpObj.metadata();
     if (meta.format !== 'jpeg') {
       throw new Error(`Input data was not JPEG, it was: ${meta.format}`);
     }
     return await sharpObj.png().toBuffer();
   } else if (originalFormat === 'svg') {
-    const sharpObj = sharp(data, { density: 72 });
+    const sharpObj = sharp(data, { density: 72, limitInputPixels: false });
     const meta = await sharpObj.metadata();
     if (meta.format !== 'svg') {
       throw new Error(`Input data was not SVG, it was: ${meta.format}`);
