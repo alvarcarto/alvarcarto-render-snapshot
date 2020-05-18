@@ -111,8 +111,15 @@ async function fetchPosterFromS3(service, poster) {
   logger.info(`Downloading poster from "${posterApiUrl}" ..`);
 
   try {
-    return await downloadImage(posterApiUrl);
+    return {
+      data: await downloadImage(posterApiUrl),
+      fallback: false,
+    };
   } catch (err) {
+    if (err.name === 'StatusCodeError' && !_.includes([404, 403], err.response.statusCode)) {
+      throw err;
+    }
+
     logger.warn('Download failed! S3 doesn\'t seem to have this file yet.');
     logger.warn('Remember to take a snapshot of the image for next run.');
     logger.warn('Returning an empty image, this will show up as a massive difference.');
@@ -123,7 +130,7 @@ async function fetchPosterFromS3(service, poster) {
   const height = poster.height || dims.height;
   const emptyImage = Buffer.from(`
     <svg width="${width}px" height="${height}px" viewBox="0 0 ${width} ${height}" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-      <rect fill="#d8d8d8" x="0" y="0" width="${width}" height="${height}"/>
+      <rect fill="#d6d8d9" x="0" y="0" width="${width}" height="${height}"/>
       <g text-anchor="middle">
         <text id="warning" font-family="sans-serif" font-size="100" font-weight="700" letter-spacing="25.71573" fill="#ff0000">
           <tspan x="${width / 2}" y="${height / 2}">NO SNAPSHOT FOUND FROM S3</tspan>
@@ -132,7 +139,10 @@ async function fetchPosterFromS3(service, poster) {
     </svg>
   `);
 
-  return await sharp(emptyImage, { density: 72 }).png().toBuffer();
+  return {
+    data: await sharp(emptyImage, { density: 72 }).png().toBuffer(),
+    fallback: true,
+  };
 }
 
 const retryingFetchPosterFromS3 = promiseRetryify(fetchPosterFromS3, {
@@ -308,10 +318,15 @@ async function compareAll(opts) {
 
     await BPromise.map(filteredPosters, async (poster) => {
       const apiData = await retryingFetchImageFromService(service, poster, opts);
-      const s3Data = await retryingFetchPosterFromS3(service, poster, opts);
+      const s3Res = await retryingFetchPosterFromS3(service, poster, opts);
+      const s3Data = s3Res.data;
 
       logger.info(`Received ${prettyBytes(apiData.length)} data from ${service} service`);
-      logger.info(`Received ${prettyBytes(s3Data.length)} data from S3`);
+      if (s3Res.fallback) {
+        logger.info('Using empty fallback image since the requested image was not found from S3');
+      } else {
+        logger.info(`Received ${prettyBytes(s3Data.length)} data from S3`);
+      }
 
       logger.info(`Resizing pictures to ${config.MAX_DIMENSION}px width or height ..`);
       await sharp(await resizeImage(apiData, config.MAX_DIMENSION))
