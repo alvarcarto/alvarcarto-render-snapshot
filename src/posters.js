@@ -51,7 +51,20 @@ function getCombinations(service, _opts = {}) {
         orientations: ['portrait'],
         locationIds: [opts.mainLocationId],
         zoomLevels: [11],
-        formats: ['pdf', 'png', 'jpg', 'svg'],
+        formats: ['pdf', 'png', 'jpg'],
+        labelsEnabledFlags: [true, false],
+      }, {
+        posterStyles: ['classic'],
+        mapStyles: ['bw', 'contrast-black'],
+        sizes: ['30x40cm'],
+        orientations: ['portrait'],
+        locationIds: [opts.mainLocationId],
+        zoomLevels: [11],
+        // SVG comparisons failed to Error: Input buffer has corrupt header: glib: XML parse error: cannot load more than 200000 XML elements
+        // https://gitlab.gnome.org/GNOME/librsvg/-/issues/574
+        // This might be because circle ci has different librsvg version, because locally it worked
+        // By taking smaller size for SVG we try to omit this issue
+        formats: ['svg'],
         labelsEnabledFlags: [true, false],
       }];
     case 'render-map':
