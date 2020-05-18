@@ -51,7 +51,7 @@ function getCombinations(service, _opts = {}) {
         orientations: ['portrait'],
         locationIds: [opts.mainLocationId],
         zoomLevels: [11],
-        formats: ['png', 'jpg', 'svg'],
+        formats: ['pdf', 'png', 'jpg', 'svg'],
         labelsEnabledFlags: [true, false],
       }];
     case 'render-map':

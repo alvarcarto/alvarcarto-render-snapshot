@@ -67,7 +67,7 @@ async function convertFormatToPng(data, originalFormat) {
     }
     return await sharpObj.png().toBuffer();
   } else if (originalFormat === 'pdf') {
-    return await convertPdfToPng(data, 0);
+    return await convertPdfToPng(data);
   }
 
   throw new Error(`Unknown format: ${originalFormat}`);
