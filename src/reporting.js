@@ -24,14 +24,14 @@ function generateHtml(diffInfo) {
     const query = queryString.stringify({
       lat: location.lat,
       lng: location.lng,
-      zoom: diff.poster.zoomLevel,
+      zoom: diff.poster.zoomLevel + 0.5,
       size: diff.poster.size,
       orientation: diff.poster.orientation,
       posterStyle: diff.poster.posterStyle,
       mapStyle: diff.poster.mapStyle,
       labelsEnabled: diff.poster.labelsEnabled,
       labelHeader: diff.poster.labelHeader,
-      labelSmallHeader: diff.poster.labelSmall,
+      labelSmallHeader: diff.poster.labelSmallHeader,
       labelText: diff.poster.labelText,
     });
 

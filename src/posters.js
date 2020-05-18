@@ -1,15 +1,26 @@
 const _ = require('lodash');
 const combinatorics = require('js-combinatorics');
 const locations = require('./locations');
-const { parseSizeToPixelDimensions, getLatLngBounds } = require('./util');
+const {
+  parseSizeToPixelDimensions,
+  getLatLngBounds,
+  posterSizeToDesignerPixels,
+  DESIGNER_DIMENSIONS,
+} = require('./util');
 
 function getBounds(size, orientation, lat, lng, zoom = 11) {
-  const { width, height } = parseSizeToPixelDimensions(size, orientation);
+  let dimensions;
+  if (_.has(DESIGNER_DIMENSIONS, size)) {
+    dimensions = posterSizeToDesignerPixels(size, orientation);
+  } else {
+    dimensions = parseSizeToPixelDimensions(size, orientation);
+  }
+
   const bounds = getLatLngBounds(
     { lat, lng },
     zoom,
-    width,
-    height,
+    dimensions.width,
+    dimensions.height,
   );
   return bounds;
 }

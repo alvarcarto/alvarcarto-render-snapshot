@@ -153,7 +153,7 @@ async function fetchPosterFromS3(service, poster) {
     <svg width="${width}px" height="${height}px" viewBox="0 0 ${width} ${height}" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
       <rect fill="#d6d8d9" x="0" y="0" width="${width}" height="${height}"/>
       <g text-anchor="middle">
-        <text id="warning" font-family="sans-serif" font-size="${width / 35}" font-weight="700" letter-spacing="25.71573" fill="#ff0000">
+        <text id="warning" font-family="sans-serif" font-size="${width / 35}" font-weight="700" letter-spacing="${width / 200}" fill="#ff0000">
           <tspan x="${width / 2}" y="${height / 2}">NO SNAPSHOT FOUND FROM S3</tspan>
         </text>
       </g>
