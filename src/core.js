@@ -113,7 +113,7 @@ async function fetchPosterFromS3(service, poster) {
   try {
     const res = await downloadImage(posterApiUrl);
     return {
-      data: res.data,
+      data: res.body,
       fallback: false,
     };
   } catch (err) {
