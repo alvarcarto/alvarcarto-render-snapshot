@@ -3,6 +3,7 @@ const BPromise = require('bluebird');
 const fs = BPromise.promisifyAll(require('fs'));
 const BlinkDiff = require('blink-diff');
 const sharp = require('sharp');
+const moment = require('moment');
 const minimatch = require('minimatch');
 const request = require('request-promise');
 const prettyBytes = require('pretty-bytes');
@@ -12,6 +13,7 @@ const { createPosterImageUrl, createPlacementImageUrl, createRenderMapImageUrl }
 const logger = require('./util/logger')(__filename);
 const config = require('./config');
 const { getPosters } = require('./posters');
+const { generateHtml } = require('./reporting');
 const { convertPdfToPng } = require('./util/pdf2png');
 const { parseSizeToPixelDimensions } = require('./util');
 
@@ -45,6 +47,8 @@ function getImageUrl(service, poster) {
       return createRenderMapImageUrl(obj);
     case 'placement':
       return createPlacementImageUrl(obj);
+    case 'test-report':
+      return createPosterImageUrl(obj);
     default:
       throw new Error(`Unknown service: ${service}`);
   }
@@ -84,7 +88,16 @@ async function fetchImageFromService(service, poster, opts) {
     if (opts.tempFiles) {
       await fs.writeFileAsync(`${TEMP_FILE_PREFIX}${posterToFileBaseName(service, poster)}.${poster.format}`, data);
     }
-    data = await convertFormatToPng(data, poster.format);
+    try {
+      data = await convertFormatToPng(data, poster.format);
+    } catch (err) {
+      err.meta = {
+        convertError: true,
+        url: imageUrl,
+      };
+
+      throw err;
+    }
   }
   return data;
 }
@@ -93,21 +106,28 @@ const errorLogger = (err) => {
   if (err.name === 'StatusCodeError') {
     const msg = `StatusCodeError: ${err.response.statusCode} - ${err.response.body.toString()}`;
     logger.error(msg);
-  } else {
-    logger.error(`Error: ${err}`);
+    return true;
+  } else if (_.get(err, 'meta.convertError')) {
+    logger.error(`Conversion error: ${err} for url ${err.meta.url}`);
+    return false;
   }
+
+  logger.error(`Error: ${err}`);
   return true;
 };
 
 const retryingFetchImageFromService = promiseRetryify(fetchImageFromService, {
-  beforeRetry: retryCount => logger.info(`Retrying image download (${retryCount}) ..`),
+  beforeRetry: (retryCount, [service, poster]) => {
+    const retryUrl = getImageUrl(service, poster);
+    logger.info(`Retrying image download (${retryCount}) for ${retryUrl} ..`);
+  },
   maxRetries: 10,
   shouldRetry: errorLogger,
   retryTimeout: count => count * 10000,
 });
 
 async function fetchPosterFromS3(service, poster) {
-  const posterApiUrl = getS3Url(service, poster);
+  const posterApiUrl = getS3UrlForPoster(service, poster);
   logger.info(`Downloading poster from "${posterApiUrl}" ..`);
 
   try {
@@ -133,7 +153,7 @@ async function fetchPosterFromS3(service, poster) {
     <svg width="${width}px" height="${height}px" viewBox="0 0 ${width} ${height}" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
       <rect fill="#d6d8d9" x="0" y="0" width="${width}" height="${height}"/>
       <g text-anchor="middle">
-        <text id="warning" font-family="sans-serif" font-size="100" font-weight="700" letter-spacing="25.71573" fill="#ff0000">
+        <text id="warning" font-family="sans-serif" font-size="${width / 35}" font-weight="700" letter-spacing="25.71573" fill="#ff0000">
           <tspan x="${width / 2}" y="${height / 2}">NO SNAPSHOT FOUND FROM S3</tspan>
         </text>
       </g>
@@ -152,30 +172,34 @@ const retryingFetchPosterFromS3 = promiseRetryify(fetchPosterFromS3, {
   retryTimeout: count => count * 10000,
 });
 
-function uploadPosterToS3(service, poster, data) {
-  logger.info('Uploading poster to S3 ..');
-
-  const key = posterToFileBaseName(service, poster);
+function uploadFileToS3(fileKey, data, contentType) {
   const params = {
     Bucket: config.AWS_S3_BUCKET_NAME,
     ACL: 'public-read',
-    Key: `${key}.png`,
-    ContentType: 'image/png',
+    Key: fileKey,
+    ContentType: contentType,
     Body: data,
   };
 
   return s3.uploadAsync(params)
-    .tap(res => logger.info(`Uploaded poster to S3: ${res.Location}`))
+    .tap(res => logger.info(`Uploaded file to S3: ${res.Location}`))
     .catch((err) => {
-      logger.error(`Error uploading poster to S3: ${err}`);
+      logger.error(`Error uploading file to S3: ${err}`);
       throw err;
     });
 }
 
+function uploadPosterToS3(service, poster, data) {
+  logger.info('Uploading poster to S3 ..');
+
+  const baseKey = posterToFileBaseName(service, poster);
+  return uploadFileToS3(`${baseKey}.png`, data, 'image/png');
+}
+
 function saveFileToLocal(service, poster, data) {
   const key = posterToFileBaseName(service, poster);
-  return fs.writeFileAsync(`images/snapshot/${key}.png`, data, { encoding: null })
-    .tap(() => logger.info(`Saved file to images/snapshot/${key}.png`))
+  return fs.writeFileAsync(`images/snapshots/${key}.png`, data, { encoding: null })
+    .tap(() => logger.info(`Saved file to images/snapshots/${key}.png`))
     .catch((err) => {
       logger.error(`Error saving poster to local: ${err}`);
       throw err;
@@ -248,9 +272,13 @@ function logPosterCount(opts) {
   logger.info(`Total of ${total} combinations`);
 }
 
-function getS3Url(service, poster) {
+function getS3UrlForPoster(service, poster) {
   const name = posterToFileBaseName(service, poster);
-  return `https://alvarcarto-render-snapshots.s3-eu-west-1.amazonaws.com/${name}.png`;
+  return getS3UrlForKey(`${name}.png`);
+}
+
+function getS3UrlForKey(key) {
+  return `https://${config.AWS_S3_BUCKET_NAME}.s3-eu-west-1.amazonaws.com/${key}`;
 }
 
 async function resizeImage(input, maxDimension) {
@@ -298,9 +326,9 @@ async function takeSnapshot(opts) {
       logger.info(`Downloaded ${prettyBytes(apiData.length)} data`);
 
       let imageData = apiData;
-      if (!opts.originals && config.MAX_DIMENSION) {
-        logger.info(`Resizing picture to max ${config.MAX_DIMENSION}px width or height ..`);
-        imageData = await resizeImage(apiData, config.MAX_DIMENSION);
+      if (!opts.originals && config.MAX_DIMENSION_FOR_DIFF) {
+        logger.info(`Resizing picture to max ${config.MAX_DIMENSION_FOR_DIFF}px width or height ..`);
+        imageData = await resizeImage(apiData, config.MAX_DIMENSION_FOR_DIFF);
       }
 
       await savePosterToTarget(opts.target, service, poster, imageData);
@@ -310,6 +338,18 @@ async function takeSnapshot(opts) {
 
 async function compareAll(opts) {
   logPosterCount(opts);
+
+  // Must be done once before loop to keep it stable
+  const localDateString = moment().format('YYYY-MM-DD_HH[h]mm[m]ss[s]');
+  const buildNum = process.env.CIRCLE_BUILD_NUM
+    ? `ci-build-${process.env.CIRCLE_BUILD_NUM}`
+    : `local-${localDateString}`;
+  const tempS3Prefix = `temp/${buildNum}/`;
+
+  const diffInfo = {
+    tempS3Prefix,
+    diffs: [],
+  };
 
   await BPromise.each(opts.services, async (service) => {
     const posters = getPosters(service, { mainLocationId: opts.mainLocationId });
@@ -329,11 +369,11 @@ async function compareAll(opts) {
         logger.info(`Received ${prettyBytes(s3Data.length)} data from S3`);
       }
 
-      logger.info(`Resizing pictures to ${config.MAX_DIMENSION}px width or height ..`);
-      await sharp(await resizeImage(apiData, config.MAX_DIMENSION))
+      logger.info(`Resizing pictures to ${config.MAX_DIMENSION_FOR_DIFF}px width or height ..`);
+      await sharp(await resizeImage(apiData, config.MAX_DIMENSION_FOR_DIFF))
         .toFile(`${API_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
 
-      await sharp(await resizeImage(s3Data, config.MAX_DIMENSION))
+      await sharp(await resizeImage(s3Data, config.MAX_DIMENSION_FOR_DIFF))
         .toFile(`${S3_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
 
       const diff = new BlinkDiff({
@@ -347,19 +387,50 @@ async function compareAll(opts) {
       const result = await promisifiedDiff.runAsync();
 
       logger.info(`Found ${result.differences} differences`);
+      const diffFileName = `${DIFF_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`;
       if (result.differences < 1) {
         fs.unlinkSync(`${S3_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
         fs.unlinkSync(`${API_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
-        fs.unlinkSync(`${DIFF_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
-      } else if (SAVE_ALL_FILES) {
-        logger.info('Saved diff and fetched images under images/');
+        fs.unlinkSync(diffFileName);
       } else {
-        fs.unlinkSync(`${S3_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
-        fs.unlinkSync(`${API_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
-        logger.info('Saved diff under images/');
+        const diffImage = fs.readFileSync(diffFileName, { encoding: null });
+        const resizedDiffImage = await resizeImage(diffImage, config.MAX_DIMENSION_FOR_REVIEW);
+        const baseName = posterToFileBaseName(service, poster);
+        const s3DiffImageKey = `${tempS3Prefix}${baseName}.png`;
+        await uploadFileToS3(s3DiffImageKey, resizedDiffImage, 'image/png');
+        const diffMeta = await sharp(resizedDiffImage).metadata();
+        diffInfo.diffs.push({
+          key: s3DiffImageKey,
+          differences: result.differences,
+          url: getS3UrlForKey(s3DiffImageKey),
+          width: diffMeta.width,
+          height: diffMeta.height,
+          service,
+          poster,
+          baseName,
+          apiUrl: getImageUrl(service, poster),
+        });
+
+        if (SAVE_ALL_FILES) {
+          logger.info('Saved diff and fetched images under images/');
+        } else {
+          fs.unlinkSync(`${S3_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
+          fs.unlinkSync(`${API_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`);
+          logger.info('Saved diff under images/');
+        }
       }
     }, { concurrency: opts.concurrency });
   });
+
+  const totalDiffs = _.sumBy(diffInfo.diffs, 'differences');
+  if (totalDiffs > 0) {
+    const htmlStr = generateHtml(diffInfo);
+    const reportKeyName = `${tempS3Prefix}report.html`;
+    await uploadFileToS3(reportKeyName, htmlStr, 'text/html');
+    logger.info(`Uploaded final review report to ${getS3UrlForKey(reportKeyName)}`);
+  } else {
+    logger.info('No differences found. Skipping report generation.');
+  }
 }
 
 module.exports = {

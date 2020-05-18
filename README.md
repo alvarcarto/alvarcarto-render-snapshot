@@ -51,6 +51,11 @@ responded.
 `node src/index.js snapshot --service render --only 'format:pdf'`
 
 
+**Generate test report:**
+
+`npm run compare -- --temp-files --concurrency 3 --services 'test-report'`
+
+
 ## Known issues
 
 

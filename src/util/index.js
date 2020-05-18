@@ -37,7 +37,7 @@ function createRenderMapImageUrl(poster) {
 function createPlacementImageUrl(poster) {
   const queryObj = _.merge({
     apiKey: config.PLACEMENT_API_KEY,
-    resizeToWidth: config.MAX_DIMENSION,
+    resizeToWidth: config.MAX_DIMENSION_FOR_DIFF,
   }, poster);
 
   const query = qs.stringify(queryObj);
