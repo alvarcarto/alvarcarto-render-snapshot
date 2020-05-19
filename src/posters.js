@@ -75,7 +75,7 @@ function getCombinations(service, _opts = {}) {
         sizes: ['50x70cm'],
         orientations: ['portrait'],
         locationIds: [opts.mainLocationId],
-        zoomLevels: [18],
+        zoomLevels: [14],
         formats: ['svg'],
         labelsEnabledFlags: [true, false],
       }];
