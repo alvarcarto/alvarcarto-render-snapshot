@@ -16,6 +16,19 @@ const serviceToExplanation = {
   placement: '/api/place-map (Placement service)',
 };
 
+function getFormatDescription(format) {
+  if (format === 'png') {
+    return '';
+  } else if (format === 'svg') {
+    return oneLine`
+      (Requested as this format and converted to PNG for visual diff.
+      SVG files have wrong fonts, because the fonts are not installed in CI)
+    `;
+  }
+
+  return '(Requested as this format and converted to PNG for visual diff)';
+}
+
 function generateHtml(diffInfo) {
   const template = fs.readFileSync(path.join(__dirname, 'templates/index.html'), { encoding: 'utf8' });
   const timestamp = moment().toISOString();
@@ -43,6 +56,7 @@ function generateHtml(diffInfo) {
       differencesHuman: millify(diff.differences, {
         units: ['', 'K', 'M', 'billion', 'tera', 'peta', 'exa'],
       }),
+      formatDescription: getFormatDescription(diff.poster.format),
     });
   });
   const sorted = _.orderBy(diffs, 'differences', 'desc');
