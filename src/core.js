@@ -198,8 +198,8 @@ function uploadPosterToS3(service, poster, data) {
 
 function saveFileToLocal(service, poster, data) {
   const key = posterToFileBaseName(service, poster);
-  return fs.writeFileAsync(`images/snapshots/${key}.png`, data, { encoding: null })
-    .tap(() => logger.info(`Saved file to images/snapshots/${key}.png`))
+  return fs.writeFileAsync(`images/snapshot/${key}.png`, data, { encoding: null })
+    .tap(() => logger.info(`Saved file to images/snapshot/${key}.png`))
     .catch((err) => {
       logger.error(`Error saving poster to local: ${err}`);
       throw err;
