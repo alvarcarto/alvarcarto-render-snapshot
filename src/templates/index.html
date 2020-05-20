@@ -48,7 +48,7 @@
       .main-description {
         color: #444;
         margin-bottom: 80px;
-        max-width: 500px;
+        max-width: 600px;
         line-height: 1.3;
       }
 
@@ -82,36 +82,36 @@
         font-size: 0.9rem;
         color: #555;
       }
-      .image-wrapper-portrait {
+      .image-wrapper-landscape {
         display: flex;
         flex-direction: column;
         align-items: flex-start;
         width: 100%;
         max-width: {{maxImageDimension}}px;
       }
-      .image-wrapper-portrait .image-explanations {
+      .image-wrapper-landscape .image-explanations {
         width: 100%;
         display: flex;
         margin: 10px 0 10px 0;
       }
-      .image-wrapper-portrait .image-explanations span {
+      .image-wrapper-landscape .image-explanations span {
         display: inline-block;
         width: 33.3333%;
         text-align: center;
       }
-      .image-wrapper-portrait img, .image-wrapper-portrait .img-link {
+      .image-wrapper-landscape img, .image-wrapper-landscape .img-link {
         width: 100%;
       }
 
-      .image-wrapper-landscape {
+      .image-wrapper-portrait {
         width: 100%;
         max-width: 450px;
       }
-      .image-wrapper-landscape .image-explanations {
+      .image-wrapper-portrait .image-explanations {
         display: none;
         visibility: hidden;
       }
-      .image-wrapper-landscape img, .image-wrapper-landscape .img-link {
+      .image-wrapper-portrait img, .image-wrapper-portrait .img-link {
         width: 100%;
       }
 
@@ -120,18 +120,28 @@
   <body>
     <div class="main">
       <h1>{{pageTitle}}</h1>
-      <p class="main-description">
-        Results are sorted based on the amount of pixel differences.
-        The largest changes are at the top.
-        Note that only images with visual differences are added to this report.
-        <i>This report will be deleted in 14 days.</i>
-      </p>
+      <div class="main-description">
+        <p>
+          This report visualises the changes between current production snapshot
+          and rendered images via API calls to Render API at {{renderApiUrl}}.
+          The production snapshot images are stored in S3 bucket named {{s3BucketName}} and
+          are updated after each production deployment.
+        </p>
+        <p>
+          Results are sorted based on the amount of pixel differences.
+          The largest changes are at the top.
+          Note that only images with visual differences are added to this report.
+        </p>
+        <p>
+          <i>This report will be deleted in 14 days.</i>
+        </p>
+      </div>
 
       {{#diffs}}
       <div id="{{baseName}}">
         <ul>
           <li><b>Diff ID:</b> <a href="#{{baseName}}">{{baseName}}</a></li>
-          <li><b>Differences:</b> {{differencesHuman}} pixel differences</li>
+          <li><b>Difference:</b> {{differencePercentage}}% of the image ({{differencesHuman}} pixel differences)</li>
           <li><b>Location id:</b> <a target="_blank" href="{{designerUrl}}">{{poster.locationId}}</a></li>
           <li><b>Poster size:</b> {{poster.size}}</li>
           <li><b>Poster style:</b> {{poster.posterStyle}}</li>
@@ -140,10 +150,11 @@
           <li><b>Labels enabled:</b> {{poster.labelsEnabled}}</li>
           <li><b>Zoom level:</b> {{poster.zoomLevel}}</li>
           <li><b>File format:</b> {{poster.format}} <i>{{formatDescription}}</i></li>
-          <li><b>Endpoint:</b> <a target="_blank" href="{{apiUrl}}">{{serviceExplanation}}</a></li>
+          <li><b>S3 link:</b> <a target="_blank" href="{{snapshotS3Url}}">{{snapshotS3UrlShort}}</a></li>
+          <li><b>API link:</b> <a target="_blank" href="{{apiUrl}}">{{apiUrlShort}}</a></li>
         </ul>
 
-        <div class="image-wrapper image-wrapper-{{poster.orientation}}">
+        <div class="image-wrapper image-wrapper-{{diffImageOrientation}}">
           <div class="image-explanations">
             <span>Current production snapshot</span>
             <span>Difference</span>

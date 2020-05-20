@@ -4,6 +4,7 @@ const fs = BPromise.promisifyAll(require('fs'));
 const BlinkDiff = require('blink-diff');
 const sharp = require('sharp');
 const moment = require('moment');
+const { URL } = require('url');
 const minimatch = require('minimatch');
 const request = require('request-promise');
 const prettyBytes = require('pretty-bytes');
@@ -272,13 +273,23 @@ function logPosterCount(opts) {
   logger.info(`Total of ${total} combinations`);
 }
 
-function getS3UrlForPoster(service, poster) {
+function getS3KeyForPoster(service, poster) {
   const name = posterToFileBaseName(service, poster);
-  return getS3UrlForKey(`${name}.png`);
+  return `${name}.png`;
+}
+
+function getS3UrlForPoster(service, poster) {
+  const key = getS3KeyForPoster(service, poster);
+  return getS3UrlForKey(key);
 }
 
 function getS3UrlForKey(key) {
   return `https://${config.AWS_S3_BUCKET_NAME}.s3-eu-west-1.amazonaws.com/${key}`;
+}
+
+function getShortUrl(urlStr) {
+  const url = new URL(urlStr);
+  return `${url.origin}${url.pathname}?...`;
 }
 
 async function resizeImage(input, maxDimension) {
@@ -394,21 +405,28 @@ async function compareAll(opts) {
         fs.unlinkSync(diffFileName);
       } else {
         const diffImage = fs.readFileSync(diffFileName, { encoding: null });
+        const originalDiffMeta = await sharp(diffImage).metadata();
         const resizedDiffImage = await resizeImage(diffImage, config.MAX_DIMENSION_FOR_REVIEW);
         const baseName = posterToFileBaseName(service, poster);
         const s3DiffImageKey = `${tempS3Prefix}${baseName}.png`;
         await uploadFileToS3(s3DiffImageKey, resizedDiffImage, 'image/png');
-        const diffMeta = await sharp(resizedDiffImage).metadata();
+        const resizedDiffMeta = await sharp(resizedDiffImage).metadata();
+
         diffInfo.diffs.push({
           key: s3DiffImageKey,
           differences: result.differences,
           url: getS3UrlForKey(s3DiffImageKey),
-          width: diffMeta.width,
-          height: diffMeta.height,
+          snapshotS3UrlShort: `s3://${config.AWS_S3_BUCKET_NAME}/${getS3KeyForPoster(service, poster)}`,
+          snapshotS3Url: getS3UrlForPoster(service, poster),
+          originalDiffImageWidth: originalDiffMeta.width,
+          originalDiffImageHeight: originalDiffMeta.height,
+          resizedDiffImageWidth: resizedDiffMeta.width,
+          resizedDiffImageHeight: resizedDiffMeta.height,
           service,
           poster,
           baseName,
           apiUrl: getImageUrl(service, poster),
+          apiUrlShort: getShortUrl(getImageUrl(service, poster)) ,
         });
 
         if (SAVE_ALL_FILES) {
