@@ -30,12 +30,25 @@ responded.
 
 ### More examples
 
+*If needed, you can increase the node process memory with `NODE_OPTIONS=--max_old_space_size=4096`.*
 
-**Take a snapshot of images into the local disk:**
+**Take a snapshot and upload to S3**
 
-`node src/index.js snapshot --target local`
+```
+# Take snapshots for production settings
+npm run snapshot -- --concurrency 2
+# Take snapshots for qa settings (only uses helsinki location as the QA server doesn't have whole planet data)
+npm run snapshot -- --concurrency 2 --main-location-id hki_c --only 'locationId:hki_c' --only 'orientation:portrait'
+```
 
-*This can e.g. be uploaded to S3*
+**Take a snapshot to local disk**
+
+```
+# Take snapshots for production settings
+npm run snapshot -- --concurrency 2 --target local
+# Take snapshots for qa settings (only uses helsinki location as the QA server doesn't have whole planet data)
+npm run snapshot -- --concurrency 2 --target local --main-location-id hki_c --only 'locationId:hki_c' --only 'orientation:portrait'
+```
 
 **Only do snapshots for poster renders:**
 
