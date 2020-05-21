@@ -9,13 +9,6 @@ const millify = require('millify').default;
 const locations = require('./locations');
 const config = require('./config');
 
-const serviceToExplanation = {
-  render: '/api/raster/render (Render service)',
-  tile: '/api/raster/render?useTileRender=true (Render service)',
-  'render-map': '/api/raster/render-map (Render service)',
-  placement: '/api/place-map (Placement service)',
-};
-
 function getFormatDescription(format) {
   if (format === 'png') {
     return '';
@@ -55,7 +48,6 @@ function generateHtml(diffInfo) {
         ? 'landscape'
         : 'portrait',
       title: `${diff.baseName}.png`,
-      serviceExplanation: serviceToExplanation[diff.service] || diff.service,
       // The differences are the amount of pixels changed.
       differenceRatio: diff.differences / originalPixels,
       differencePercentage: ((diff.differences / originalPixels) * 100).toFixed(2),
