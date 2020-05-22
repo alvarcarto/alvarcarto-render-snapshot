@@ -45,45 +45,56 @@ function getCombinations(service, _opts = {}) {
   }, _opts);
 
   switch (service) {
+    // Goal of render is to test different output formats and that all poster SVG files are valid
     case 'render':
-      return [{
-        posterStyles: ['sharp', 'classic', 'sans', 'bw'],
-        mapStyles: ['bw', 'gray', 'black', 'petrol'],
-        sizes: ['30x40cm', '50x70cm', '70x100cm', '12x18inch', '18x24inch', '24x36inch'],
-        orientations: ['landscape', 'portrait'],
-        locationIds: [opts.mainLocationId],
-        zoomLevels: [11],
-        formats: ['png'],
-        labelsEnabledFlags: [true],
-      }, {
-        posterStyles: ['classic'],
-        mapStyles: ['bw', 'contrast-black'],
-        sizes: ['70x100cm'],
-        orientations: ['portrait'],
-        locationIds: [opts.mainLocationId],
-        zoomLevels: [11],
-        formats: ['pdf', 'png', 'jpg'],
-        labelsEnabledFlags: [true, false],
-      },
-      // By taking SVG from higher zoom level and smaller size, we try to omit the following error:
-      // SVG comparisons failed to Error: Input buffer has corrupt header:
-      //   glib: XML parse error: cannot load more than 200000 XML elements
-      // https://gitlab.gnome.org/GNOME/librsvg/-/issues/574
-      {
-        posterStyles: ['classic'],
-        mapStyles: ['bw', 'contrast-black'],
-        sizes: ['50x70cm'],
-        orientations: ['portrait'],
-        locationIds: [opts.mainLocationId],
-        zoomLevels: [14],
-        formats: ['svg'],
-        labelsEnabledFlags: [true, false],
-      }];
+      return [
+        // This tests that all SVG poster file combinations are correct
+        {
+          posterStyles: ['sharp', 'classic', 'sans', 'bw'],
+          mapStyles: ['bw'],
+          sizes: ['30x40cm', '50x70cm', '70x100cm', '12x18inch', '18x24inch', '24x36inch'],
+          orientations: ['landscape', 'portrait'],
+          locationIds: [opts.mainLocationId],
+          zoomLevels: [11],
+          formats: ['png'],
+          labelsEnabledFlags: [true],
+        },
+        // This tests different formats, with labels enabled or not
+        {
+          posterStyles: ['classic'],
+          mapStyles: ['bw'],
+          sizes: ['70x100cm'],
+          orientations: ['portrait'],
+          locationIds: [opts.mainLocationId],
+          zoomLevels: [11],
+          // By adding png we also test at least once the labels enabled: false variation.
+          formats: ['pdf', 'png', 'jpg'],
+          labelsEnabledFlags: [true, false],
+        },
+        // This tests SVG, similar to other formats except we need to zoom closer to get less
+        // elements.
+        // By taking SVG from higher zoom level and smaller size, we try to omit the following
+        // error:
+        // SVG comparisons failed to Error: Input buffer has corrupt header:
+        //   glib: XML parse error: cannot load more than 200000 XML elements
+        // https://gitlab.gnome.org/GNOME/librsvg/-/issues/574
+        {
+          posterStyles: ['classic'],
+          mapStyles: ['bw'],
+          sizes: ['50x70cm'],
+          orientations: ['portrait'],
+          locationIds: [opts.mainLocationId],
+          zoomLevels: [14],
+          formats: ['svg'],
+          labelsEnabledFlags: [true, false],
+        },
+      ];
+    // Goal of render map is to focus on map details on different zoom levels
     case 'render-map':
       return [{
         // Will be visible in the filename
         posterStyles: ['null'],
-        mapStyles: ['bw', 'gray', 'petrol', 'contrast-black'],
+        mapStyles: ['bw', 'black', 'gray', 'petrol', 'contrast-black', 'bg-black', 'bg-sunset'],
         sizes: ['A6'],
         orientations: ['portrait'],
         locationIds: _.map(locations, 'id'),
@@ -102,6 +113,7 @@ function getCombinations(service, _opts = {}) {
           return true;
         },
       }];
+    // Goal is to test that the tile-renderer works
     case 'tile':
       return [{
         posterStyles: ['bw'],
@@ -113,6 +125,7 @@ function getCombinations(service, _opts = {}) {
         formats: ['png'],
         labelsEnabledFlags: [true],
       }];
+    // Used for creating a small test mainly to test out the report.html
     case 'test-report':
       return [{
         posterStyles: ['classic'],
@@ -124,6 +137,7 @@ function getCombinations(service, _opts = {}) {
         formats: ['png'],
         labelsEnabledFlags: [true],
       }];
+    // Goal is to test that the placement service works
     case 'minimal':
     case 'placement':
       return [{
