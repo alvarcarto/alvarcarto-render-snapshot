@@ -260,17 +260,17 @@ function filterPostersWithPattern(posters, pattern) {
 }
 
 function logPosterCount(opts) {
-  logger.info('Going through the following images :');
+  logger.info('Going through the following images:');
 
   let total = 0;
   _.forEach(opts.services, (service) => {
     const posters = getPosters(service, { mainLocationId: opts.mainLocationId });
     const filteredPosters = filterPosters(posters, opts);
-    logger.info(`${filteredPosters.length} combinations for ${service} service`);
+    logger.info(`* ${filteredPosters.length} combinations for ${service} service`);
     total += filteredPosters.length;
   });
 
-  logger.info(`Total of ${total} combinations`);
+  logger.info(`Total of ${total} combinations\n\n`);
 }
 
 function getS3KeyForPoster(service, poster) {

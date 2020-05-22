@@ -91,28 +91,42 @@ function getCombinations(service, _opts = {}) {
       ];
     // Goal of render map is to focus on map details on different zoom levels
     case 'render-map':
-      return [{
-        // Will be visible in the filename
-        posterStyles: ['null'],
-        mapStyles: ['bw', 'black', 'gray', 'petrol', 'contrast-black', 'bg-black', 'bg-sunset'],
-        sizes: ['A6'],
-        orientations: ['portrait'],
-        locationIds: _.map(locations, 'id'),
-        zoomLevels: _.range(6, 17),
-        formats: ['png'],
-        labelsEnabledFlags: [true],
-        filter: (poster) => {
-          // Remove all posters of alternative locations when zoom level is too high
-          // They don't differ much, since they are usually somewhat in the same area
-          // We only want low zoom level images of the locations defined below
-          const isCenterLocation = _.includes(['hki_c', 'tokyo_c'], poster.locationId);
-          if (!isCenterLocation && poster.zoomLevel < 15) {
-            return false;
-          }
+      return [
+        // These maps are tested more thoroughly
+        {
+          // Will be visible in the filename
+          posterStyles: ['null'],
+          mapStyles: ['bw', 'gray', 'petrol'],
+          sizes: ['A6'],
+          orientations: ['portrait'],
+          locationIds: _.map(locations, 'id'),
+          zoomLevels: _.range(6, 17),
+          formats: ['png'],
+          labelsEnabledFlags: [true],
+          filter: (poster) => {
+            // Remove all posters of alternative locations when zoom level is too high
+            // They don't differ much, since they are usually somewhat in the same area
+            // We only want low zoom level images of the locations defined below
+            const isCenterLocation = _.includes(['hki_c', 'tokyo_c'], poster.locationId);
+            if (!isCenterLocation && poster.zoomLevel < 16) {
+              return false;
+            }
 
-          return true;
+            return true;
+          },
         },
-      }];
+        // These maps are tested slightly less to speed up the testing
+        {
+          posterStyles: ['null'],
+          mapStyles: ['black', 'bg-black', 'bg-sunset', 'contrast-black'],
+          sizes: ['A6'],
+          orientations: ['portrait'],
+          locationIds: [opts.mainLocationId],
+          zoomLevels: _.range(10, 14),
+          formats: ['png'],
+          labelsEnabledFlags: [true],
+        },
+      ];
     // Goal is to test that the tile-renderer works
     case 'tile':
       return [{
