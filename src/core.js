@@ -391,7 +391,7 @@ async function compareAll(opts) {
         imageAPath: `${S3_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`,
         imageBPath: `${API_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`,
         thresholdType: BlinkDiff.THRESHOLD_PERCENT,
-        threshold: 0.01,
+        threshold: 0.02,
         imageOutputPath: `${DIFF_FILE_PREFIX}${posterToFileBaseName(service, poster)}.png`,
       });
       const promisifiedDiff = BPromise.promisifyAll(diff);
